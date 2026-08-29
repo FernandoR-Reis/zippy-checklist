@@ -26,9 +26,12 @@ export default async function UnidadesPage() {
           </Card>
         ) : (
           unidades.map((unidade) => (
-            <Card key={unidade.id} className="flex items-center justify-between">
-              <span className="font-display font-semibold text-navy">{unidade.nome}</span>
-            </Card>
+            <a key={unidade.id} href={`/unidades/${unidade.id}`}>
+              <Card className="flex items-center justify-between hover:shadow-pop transition">
+                <span className="font-display font-semibold text-navy">{unidade.nome}</span>
+                <span className="font-body text-sm text-ink-muted">Setores e checklists →</span>
+              </Card>
+            </a>
           ))
         )}
       </div>
