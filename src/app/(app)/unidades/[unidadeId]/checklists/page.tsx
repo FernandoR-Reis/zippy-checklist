@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { unidadeDoUsuario } from "@/lib/unidades/guard";
 import { listarChecklists, alternarStatusChecklist } from "@/lib/checklists/actions";
 import { listarSetores } from "@/lib/setores/actions";

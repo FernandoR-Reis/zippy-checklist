@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { unidadeDoUsuario } from "@/lib/unidades/guard";
 import { listarSetores, criarSetor } from "@/lib/setores/actions";
 import { SectorRow } from "@/components/setores/SectorRow";
