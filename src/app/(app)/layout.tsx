@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getOrCreateUsuarioAtual } from "@/lib/usuarios/actions";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { AppNav } from "@/components/layout/AppNav";
+import { PageTransition } from "@/components/layout/PageTransition";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const usuario = await getOrCreateUsuarioAtual();
@@ -15,8 +16,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen flex flex-col">
       <AppHeader usuario={usuario} />
-      <AppNav />
-      <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-8">{children}</main>
+      <AppNav perfil={usuario.perfil} />
+      <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-8">
+        <PageTransition>{children}</PageTransition>
+      </main>
     </div>
   );
 }

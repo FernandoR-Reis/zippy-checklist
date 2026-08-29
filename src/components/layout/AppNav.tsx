@@ -3,16 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "@/lib/clsx";
+import type { PerfilUsuario } from "@/types/database";
 
-const links = [
+const linksGestor = [
   { href: "/hoje", label: "Hoje" },
   { href: "/unidades", label: "Unidades" },
   { href: "/usuarios", label: "Usuários" },
   { href: "/empresa", label: "Empresa" },
 ];
 
-export function AppNav() {
+const linksOperacional = [{ href: "/hoje", label: "Hoje" }];
+
+export function AppNav({ perfil }: { perfil: PerfilUsuario }) {
   const pathname = usePathname();
+  const links = perfil === "gestor" ? linksGestor : linksOperacional;
 
   return (
     <nav className="bg-surface border-b border-border px-6 flex gap-1 overflow-x-auto">
@@ -23,7 +27,7 @@ export function AppNav() {
             key={link.href}
             href={link.href}
             className={clsx(
-              "font-body font-semibold text-sm px-3 py-3 border-b-2 whitespace-nowrap transition",
+              "font-body font-semibold text-sm px-3 py-3 border-b-2 whitespace-nowrap transition-colors duration-200",
               active
                 ? "border-orange text-navy"
                 : "border-transparent text-ink-muted hover:text-navy"

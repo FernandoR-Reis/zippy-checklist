@@ -1,27 +1,22 @@
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { getOrCreateUsuarioAtual } from "@/lib/usuarios/actions";
+import { buscarExecucaoDoDia, iniciarOuContinuarExecucao, finalizarExecucao } from "@/lib/execucoes/actions";
 import { ExecutionTasks } from "@/components/hoje/ExecutionTasks";
-import type { ChecklistTemplate, TarefaTemplate } from "@/types/database";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { CheckMark } from "@/components/ui/CheckMark";
 
-export default async function ExecutarChecklistPage({ params }: { params: { checklistId: string } }) {
-  const usuario = await getOrCreateUsuarioAtual();
-  const supabase = createClient();
-  const { data: checklist } = await supabase.from("checklist_templates").select("*").eq("id", params.checklistId).eq("ativo", true).maybeSingle();
-  if (!checklist || !usuario) notFound();
-  const { data: tarefas } = await supabase.from("tarefa_templates").select("*").eq("checklist_template_id", params.checklistId).order("ordem");
-  const { data: unidade } = await supabase.from("unidades").select("nome").eq("id", checklist.unidade_id).maybeSingle();
-  const { data: setor } = await supabase.from("setores").select("nome").eq("id", checklist.setor_id).maybeSingle();
+function formatarHora(iso: string) { return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); }
 
-  return (
-    <div className="max-w-2xl mx-auto">
-      <Link href="/hoje" className="font-mono text-xs text-ink-muted hover:text-navy">← Hoje</Link>
-      <div className="mt-5 mb-6">
-        <div className="font-mono text-xs text-ink-muted uppercase tracking-wide mb-2">{unidade?.nome ?? "Unidade"} · {setor?.nome ?? "Setor"}</div>
-        <h1 className="font-display font-bold text-2xl text-navy">{(checklist as ChecklistTemplate).nome}</h1>
-      </div>
-      <ExecutionTasks tarefas={(tarefas ?? []) as TarefaTemplate[]} />
-    </div>
-  );
+export default async function ExecutarChecklistPage({ params, searchParams }: { params: { checklistId: string }; searchParams: { erro?: string; confirmarFinalizacao?: string } }) {
+  const detalhes = await buscarExecucaoDoDia(params.checklistId);
+  if (!detalhes) redirect("/hoje");
+  const { checklist, unidadeNome, setorNome, execucao, tarefas, podeEditar, podeIniciar } = detalhes;
+  if (!execucao) return <div className="max-w-md mx-auto text-center py-10"><div className="font-mono text-xs text-ink-muted uppercase tracking-wide mb-2">{unidadeNome} · {setorNome}</div><h1 className="font-display font-bold text-2xl text-navy mb-6">{checklist.nome}</h1>{podeIniciar ? <form action={iniciarOuContinuarExecucao.bind(null, checklist.id)}><Button type="submit" className="w-full">Começar</Button></form> : <p className="font-body text-sm text-ink-muted">Este checklist não está disponível para execução no momento.</p>}<Link href="/hoje" className="block mt-4 font-mono text-xs text-ink-muted">← Hoje</Link></div>;
+  const total = tarefas.length;
+  const concluidas = tarefas.filter((tarefa) => tarefa.concluida).length;
+  const obrigatoriasPendentes = tarefas.filter((tarefa) => tarefa.obrigatoria && !tarefa.concluida);
+  const opcionaisPendentes = tarefas.filter((tarefa) => !tarefa.obrigatoria && !tarefa.concluida);
+  if (execucao.status === "concluido") return <div className="max-w-md mx-auto text-center py-10"><CheckMark className="w-16 h-16 mx-auto text-success-text mb-4" /><div className="inline-flex rounded-md bg-success text-white px-4 py-2 mb-3"><h1 className="font-display font-bold text-2xl">Checklist concluído</h1></div><p className="font-body text-sm text-ink-muted mb-6">{checklist.nome}</p><Card className="text-left mb-6"><div className="font-mono text-sm text-ink-muted mb-2">{concluidas}/{total} tarefas concluídas</div>{execucao.inicio && <div className="font-mono text-xs text-ink-muted">Início: {formatarHora(execucao.inicio)}</div>}{execucao.fim && <div className="font-mono text-xs text-ink-muted">Conclusão: {formatarHora(execucao.fim)}</div>}</Card><Link href="/hoje" className="inline-flex w-fit items-center gap-2 rounded-md bg-success text-white font-semibold px-4 py-2"><span aria-hidden="true">←</span>Retornar aos check lists</Link></div>;
+  return <div className="max-w-2xl mx-auto"><Link href="/hoje" className="font-mono text-xs text-ink-muted hover:text-navy">← Hoje</Link><div className="mt-5 mb-6"><div className="font-mono text-xs text-ink-muted uppercase tracking-wide mb-2">{unidadeNome} · {setorNome}</div><h1 className="font-display font-bold text-2xl text-navy">{checklist.nome}</h1></div>{searchParams.erro && <div className="mb-4 rounded-sm bg-danger-soft text-danger-text text-sm font-body px-3 py-2">{searchParams.erro}</div>}{podeEditar && obrigatoriasPendentes.length > 0 && <Card className="mb-4"><p className="font-body font-semibold text-sm text-danger-text mb-2">Existem {obrigatoriasPendentes.length} {obrigatoriasPendentes.length > 1 ? "tarefas obrigatórias pendentes" : "tarefa obrigatória pendente"}.</p><ul className="flex flex-col gap-1">{obrigatoriasPendentes.map((tarefa) => <li key={tarefa.id}><a href={`#tarefa-${tarefa.id}`} className="font-body text-sm text-navy underline">{tarefa.titulo}</a></li>)}</ul></Card>}{podeEditar && searchParams.confirmarFinalizacao && obrigatoriasPendentes.length === 0 && <Card className="mb-4"><p className="font-body text-sm text-ink mb-1">Finalizar checklist?</p>{opcionaisPendentes.length > 0 && <p className="font-body text-sm text-ink-muted mb-1">Existem {opcionaisPendentes.length} tarefas opcionais pendentes.</p>}<p className="font-body text-sm text-ink-muted mb-4">Depois de finalizado, esta execução não poderá mais ser alterada.</p><div className="flex gap-3"><form action={finalizarExecucao.bind(null, checklist.id, execucao.id)}><Button type="submit">Finalizar</Button></form><Link href={`/hoje/${checklist.id}`} className="font-body font-semibold text-sm text-ink-muted px-2 py-2.5">Cancelar</Link></div></Card>}<ExecutionTasks checklistId={checklist.id} execucaoId={execucao.id} tarefas={tarefas} podeEditar={podeEditar} />{podeEditar && obrigatoriasPendentes.length === 0 && !searchParams.confirmarFinalizacao && <Link href={`/hoje/${checklist.id}?confirmarFinalizacao=1`} className="mt-6 block w-full rounded-md bg-orange text-white font-body font-semibold text-sm text-center px-4 py-2.5">Finalizar checklist</Link>}{!podeEditar && <p className="font-body text-xs text-ink-muted text-center mt-6">Somente leitura — esta execução pertence a outro usuário.</p>}</div>;
 }

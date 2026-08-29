@@ -49,6 +49,32 @@ export interface TarefaTemplate {
   ordem: number;
 }
 
+export type StatusExecucao = "nao_iniciado" | "em_andamento" | "concluido" | "atrasado";
+
+export interface Execucao {
+  id: string;
+  checklist_template_id: string;
+  usuario_id: string | null;
+  data: string;
+  inicio: string | null;
+  fim: string | null;
+  status: StatusExecucao;
+}
+
+export interface TarefaExecucao {
+  id: string;
+  execucao_id: string;
+  tarefa_template_id: string | null;
+  resposta: string | number | boolean | null;
+  concluida: boolean;
+  concluida_em: string | null;
+  evidencia: string | null;
+  titulo: string;
+  tipo: TipoTarefa;
+  obrigatoria: boolean;
+  ordem: number;
+}
+
 export interface Usuario {
   id: string;
   empresa_id: string | null;
@@ -67,6 +93,8 @@ export interface Database {
       usuarios: { Row: Usuario; Insert: Partial<Usuario>; Update: Partial<Usuario> };
       checklist_templates: { Row: ChecklistTemplate; Insert: Partial<ChecklistTemplate>; Update: Partial<ChecklistTemplate> };
       tarefa_templates: { Row: TarefaTemplate; Insert: Partial<TarefaTemplate>; Update: Partial<TarefaTemplate> };
+      execucoes: { Row: Execucao; Insert: Partial<Execucao>; Update: Partial<Execucao> };
+      tarefa_execucoes: { Row: TarefaExecucao; Insert: Partial<TarefaExecucao>; Update: Partial<TarefaExecucao> };
     };
   };
 }
