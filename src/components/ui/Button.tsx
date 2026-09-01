@@ -1,4 +1,7 @@
+"use client";
+
 import { ButtonHTMLAttributes } from "react";
+import { useFormStatus } from "react-dom";
 import { clsx } from "@/lib/clsx";
 
 type Variant = "primary" | "secondary" | "outline" | "danger" | "ghost";
@@ -16,6 +19,9 @@ const styles: Record<Variant, string> = {
 };
 
 export function Button({ variant = "primary", className, ...props }: ButtonProps) {
+  const { pending } = useFormStatus();
+  const enviando = props.type === "submit" && pending;
+
   return (
     <button
       className={clsx(
@@ -24,6 +30,10 @@ export function Button({ variant = "primary", className, ...props }: ButtonProps
         className
       )}
       {...props}
-    />
+      disabled={props.disabled || enviando}
+      aria-busy={enviando || undefined}
+    >
+      {enviando ? "Salvando..." : props.children}
+    </button>
   );
 }

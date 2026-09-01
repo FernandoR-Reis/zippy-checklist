@@ -24,8 +24,40 @@
   animation: page-enter 220ms ease-out both;
 }
 
+@keyframes modal-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-backdrop-enter {
+  animation: modal-backdrop-enter 180ms ease-out both;
+}
+
+.modal-panel-enter {
+  animation: modal-panel-enter 220ms ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .page-transition {
+  .page-transition,
+  .modal-backdrop-enter,
+  .modal-panel-enter {
     animation: none;
   }
 }
