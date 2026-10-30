@@ -9,7 +9,6 @@ import {
 import {
   criarTarefa,
   atualizarTarefa,
-  excluirTarefa,
 } from "@/lib/tarefas/actions";
 import { listarSetores } from "@/lib/setores/actions";
 import { listarUsuariosDaEmpresa } from "@/lib/usuarios/actions";
@@ -57,9 +56,10 @@ export default async function ChecklistPage({
   searchParams: {
     erro?: string;
     sucesso?: string;
+    importadas?: string;
+    erroImportacao?: string;
     novaTarefa?: string;
     editarTarefa?: string;
-    excluirTarefa?: string;
   };
 }) {
   const contexto = await unidadeDoUsuario(params.unidadeId);
@@ -76,7 +76,6 @@ export default async function ChecklistPage({
     (s) => s.ativo || s.id === checklist.setor_id,
   );
   const editando = tarefas.find((t) => t.id === searchParams.editarTarefa);
-  const excluindo = tarefas.find((t) => t.id === searchParams.excluirTarefa);
   const base = `/unidades/${params.unidadeId}/checklists/${params.checklistId}`;
   return (
     <div>
@@ -91,9 +90,19 @@ export default async function ChecklistPage({
           {checklist.ativo ? "Ativo" : "Inativo"}
         </Badge>
       </div>
+      {searchParams.erroImportacao && (
+        <div role="alert" className="mb-6 rounded-sm bg-danger-soft text-danger-text text-sm font-body px-3 py-2">
+          {searchParams.erroImportacao}
+        </div>
+      )}
       {searchParams.sucesso && (
         <div className="mb-6 rounded-sm bg-success-soft text-success-text text-sm font-body px-3 py-2">
           Checklist salvo.
+        </div>
+      )}
+      {searchParams.importadas && Number.isInteger(Number(searchParams.importadas)) && Number(searchParams.importadas) > 0 && (
+        <div className="mb-6 rounded-sm bg-success-soft text-success-text text-sm font-body px-3 py-2">
+          Checklist criado com sucesso. {searchParams.importadas} {Number(searchParams.importadas) === 1 ? "tarefa adicionada" : "tarefas adicionadas"}.
         </div>
       )}
       <div className="grid lg:grid-cols-2 gap-8">
@@ -111,7 +120,7 @@ export default async function ChecklistPage({
             usuarios={usuarios}
             checklist={checklist}
             erro={
-              !searchParams.novaTarefa && !editando && !excluindo
+              !searchParams.novaTarefa && !editando
                 ? searchParams.erro
                 : undefined
             }
@@ -148,9 +157,9 @@ export default async function ChecklistPage({
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-display font-semibold text-sm text-navy">
-              Tarefas
+              Tarefas <span className="font-mono text-xs text-ink-muted">({tarefas.length})</span>
             </h2>
-            {gestor && !searchParams.novaTarefa && !editando && !excluindo && (
+            {gestor && !searchParams.novaTarefa && !editando && (
               <a
                 href={`${base}?novaTarefa=1`}
                 className="font-body font-semibold text-xs text-navy"
@@ -191,25 +200,6 @@ export default async function ChecklistPage({
                 />
                 <Tipo tarefa={editando} />
                 <Button type="submit">Salvar tarefa</Button>
-              </form>
-            </Card>
-          )}
-          {gestor && excluindo && (
-            <Card className="mb-4">
-              <p className="font-body text-sm text-ink mb-4">
-                Excluir &quot;{excluindo.titulo}&quot;?
-              </p>
-              <form
-                action={excluirTarefa.bind(
-                  null,
-                  params.unidadeId,
-                  params.checklistId,
-                  excluindo.id,
-                )}
-              >
-                <Button variant="danger" type="submit">
-                  Excluir
-                </Button>
               </form>
             </Card>
           )}

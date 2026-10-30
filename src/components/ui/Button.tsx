@@ -4,10 +4,11 @@ import { ButtonHTMLAttributes } from "react";
 import { useFormStatus } from "react-dom";
 import { clsx } from "@/lib/clsx";
 
-type Variant = "primary" | "secondary" | "outline" | "danger" | "ghost";
+type Variant = "primary" | "secondary" | "outline" | "danger" | "success" | "ghost";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
+  loadingText?: string;
 }
 
 const styles: Record<Variant, string> = {
@@ -15,10 +16,16 @@ const styles: Record<Variant, string> = {
   secondary: "bg-navy text-white",
   outline: "bg-surface text-navy border-[1.5px] border-navy",
   danger: "bg-danger text-white",
+  success: "bg-success text-white",
   ghost: "bg-transparent text-navy",
 };
 
-export function Button({ variant = "primary", className, ...props }: ButtonProps) {
+export function Button({
+  variant = "primary",
+  className,
+  loadingText = "Salvando...",
+  ...props
+}: ButtonProps) {
   const { pending } = useFormStatus();
   const enviando = props.type === "submit" && pending;
 
@@ -31,9 +38,9 @@ export function Button({ variant = "primary", className, ...props }: ButtonProps
       )}
       {...props}
       disabled={props.disabled || enviando}
-      aria-busy={enviando || undefined}
+      aria-busy={enviando || props["aria-busy"] || undefined}
     >
-      {enviando ? "Salvando..." : props.children}
+      {enviando ? loadingText : props.children}
     </button>
   );
 }

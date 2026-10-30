@@ -20,7 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <AppFeedback />
       <AppHeader usuario={usuario} />
       <AppNav perfil={usuario.perfil} />
-      <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-8">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-6 sm:px-6 sm:py-8">
         <BackNavigation />
         <PageTransition>{children}</PageTransition>
       </main>

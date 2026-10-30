@@ -1,4 +1,9 @@
-import { getOrCreateUsuarioAtual, listarUsuariosDaEmpresa, convidarUsuario } from "@/lib/usuarios/actions";
+import {
+  excluirUsuario,
+  getOrCreateUsuarioAtual,
+  listarUsuariosDaEmpresa,
+  convidarUsuario,
+} from "@/lib/usuarios/actions";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -38,7 +43,16 @@ export default async function UsuariosPage({
                 <div className="font-display font-semibold text-navy">{u.nome}</div>
                 <div className="font-mono text-xs text-ink-muted">{u.email}</div>
               </div>
-              <Badge tone={u.perfil === "gestor" ? "progress" : "idle"}>{u.perfil}</Badge>
+              <div className="flex items-center gap-3">
+                <Badge tone={u.perfil === "gestor" ? "progress" : "idle"}>{u.perfil}</Badge>
+                {podeGerenciar && u.id !== usuarioAtual?.id && (
+                  <form action={excluirUsuario.bind(null, u.id)}>
+                    <Button type="submit" variant="danger" className="px-3 py-2 text-xs">
+                      Excluir
+                    </Button>
+                  </form>
+                )}
+              </div>
             </Card>
           ))
         )}

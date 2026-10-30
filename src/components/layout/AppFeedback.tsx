@@ -8,19 +8,21 @@ type Toast = { mensagem: string; tipo: "success" | "error" } | null;
 export function AppFeedback() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const queryString = searchParams.toString();
+  const erro = searchParams.get("erro");
+  const sucesso = searchParams.get("sucesso");
   const [navegando, setNavegando] = useState(false);
   const [toast, setToast] = useState<Toast>(null);
 
   useEffect(() => {
     setNavegando(false);
-  }, [pathname, searchParams]);
+  }, [pathname, queryString]);
 
   useEffect(() => {
-    const erro = searchParams.get("erro");
-    const sucesso = searchParams.get("sucesso");
     if (erro) setToast({ mensagem: erro, tipo: "error" });
     else if (sucesso) setToast({ mensagem: "Alterações salvas com sucesso.", tipo: "success" });
-  }, [searchParams]);
+    else setToast(null);
+  }, [erro, sucesso]);
 
   useEffect(() => {
     if (!toast) return;

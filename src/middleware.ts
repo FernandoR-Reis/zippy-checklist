@@ -35,14 +35,15 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isAuthRoute = path.startsWith("/login") || path.startsWith("/cadastro") || path.startsWith("/callback");
+  const isDefinirSenha = path.startsWith("/definir-senha");
+  const isAuthRoute = path.startsWith("/login") || path.startsWith("/cadastro") || path.startsWith("/callback") || isDefinirSenha;
   const isPublic = isAuthRoute || path === "/";
 
   if (!user && !isPublic) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (user && isAuthRoute) {
+  if (user && isAuthRoute && !isDefinirSenha) {
     return NextResponse.redirect(new URL("/hoje", request.url));
   }
 

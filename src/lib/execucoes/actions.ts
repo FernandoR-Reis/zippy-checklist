@@ -49,7 +49,6 @@ export async function listarChecklistsDoDia(): Promise<ChecklistDoDia[]> {
   }
   const resultado = lista
     .filter((checklist) => (totalPorChecklist.get(checklist.id) ?? 0) > 0)
-    .filter((checklist) => checklist.ativo || execucaoPorChecklist.has(checklist.id))
     .map((checklist) => {
       const execucao = execucaoPorChecklist.get(checklist.id) ?? null;
       return { checklist, setorNome: setorPorId.get(checklist.setor_id) ?? "", totalTarefas: totalPorChecklist.get(checklist.id) ?? 0, execucao, concluidas: execucao ? concluidasPorExecucao.get(execucao.id) ?? 0 : 0 };
@@ -115,13 +114,55 @@ async function contextoEditavel(execucaoId: string) {
   return contexto?.podeEditar ? contexto : null;
 }
 
-export async function alternarTarefaCheckbox(checklistId: string, execucaoId: string, tarefaId: string, concluida: boolean, _formData: FormData) {
-  if (!await contextoEditavel(execucaoId)) return;
-  await createClient().from("tarefa_execucoes").update({ concluida, concluida_em: concluida ? new Date().toISOString() : null }).eq("id", tarefaId).eq("execucao_id", execucaoId);
+export async function alternarTarefaCheckbox(checklistId: string, execucaoId: string, tarefaId: string, concluida: boolean, _formData: FormData): Promise<boolean> {
+  if (!await contextoEditavel(execucaoId)) redirect(caminho(checklistId));
+  const { error } = await createClient().from("tarefa_execucoes").update({ concluida, concluida_em: concluida ? new Date().toISOString() : null, ...(concluida ? { observacao: null } : {}) }).eq("id", tarefaId).eq("execucao_id", execucaoId);
+  if (error) redirect(`${caminho(checklistId)}?erro=${encodeURIComponent("Não foi possível salvar a tarefa. Tente novamente.")}`);
   revalidatePath(caminho(checklistId));
+  return true;
 }
 
-export async function responderTarefa(checklistId: string, execucaoId: string, tarefaId: string, formData: FormData) {
+export async function registrarTarefaNaoFeita(checklistId: string, execucaoId: string, tarefaId: string, formData: FormData): Promise<{ sucesso: boolean; erro?: string }> {
+  const contexto = await contextoEditavel(execucaoId);
+  if (!contexto || contexto.checklist.id !== checklistId) {
+    return { sucesso: false, erro: "Esta tarefa não pode ser alterada." };
+  }
+  const observacao = String(formData.get("observacao") ?? "").trim();
+  if (!observacao) return { sucesso: false, erro: "Informe por que a tarefa não foi feita." };
+  const { data, error } = await createClient().from("tarefa_execucoes").update({
+    observacao,
+    concluida: false,
+    concluida_em: null,
+  }).eq("id", tarefaId).eq("execucao_id", execucaoId).select("id").maybeSingle();
+  if (error || !data) {
+    return { sucesso: false, erro: "Não foi possível salvar a observação. Tente novamente." };
+  }
+  revalidatePath(caminho(checklistId));
+  revalidatePath("/hoje");
+  return { sucesso: true };
+}
+
+export async function reiniciarExecucao(checklistId: string, execucaoId: string): Promise<boolean> {
+  const contexto = await contextoEditavel(execucaoId);
+  if (!contexto || contexto.checklist.id !== checklistId) {
+    redirect(`${caminho(checklistId)}?erro=${encodeURIComponent("Esta execução não pode ser reiniciada.")}`);
+  }
+  const { error } = await createClient().from("tarefa_execucoes").update({
+    resposta: null,
+    concluida: false,
+    concluida_em: null,
+    evidencia: null,
+    observacao: null,
+  }).eq("execucao_id", execucaoId);
+  if (error) {
+    redirect(`${caminho(checklistId)}?erro=${encodeURIComponent("Não foi possível reiniciar o checklist. Tente novamente.")}`);
+  }
+  revalidatePath(caminho(checklistId));
+  revalidatePath("/hoje");
+  return true;
+}
+
+export async function responderTarefa(checklistId: string, execucaoId: string, tarefaId: string, formData: FormData): Promise<boolean> {
   if (!await contextoEditavel(execucaoId)) redirect(caminho(checklistId));
   const tipo = String(formData.get("tipo") ?? "") as TipoTarefa;
   let resposta: string | number;
@@ -141,18 +182,21 @@ export async function responderTarefa(checklistId: string, execucaoId: string, t
   } else {
     redirect(caminho(checklistId));
   }
-  await createClient().from("tarefa_execucoes").update({ resposta, concluida: true, concluida_em: new Date().toISOString() }).eq("id", tarefaId).eq("execucao_id", execucaoId);
+  const { error } = await createClient().from("tarefa_execucoes").update({ resposta, concluida: true, concluida_em: new Date().toISOString(), observacao: null }).eq("id", tarefaId).eq("execucao_id", execucaoId);
+  if (error) redirect(`${caminho(checklistId)}?erro=${encodeURIComponent("Não foi possível salvar a resposta. Tente novamente.")}`);
   revalidatePath(caminho(checklistId));
-  redirect(caminho(checklistId));
+  return true;
 }
 
 export async function finalizarExecucao(checklistId: string, execucaoId: string, _formData: FormData) {
   const contexto = await contextoEditavel(execucaoId);
-  if (!contexto) redirect(caminho(checklistId));
-  const { data: tarefas } = await createClient().from("tarefa_execucoes").select("obrigatoria, concluida").eq("execucao_id", execucaoId);
+  if (!contexto || contexto.checklist.id !== checklistId) redirect(caminho(checklistId));
+  const { data: tarefas, error: tarefasError } = await createClient().from("tarefa_execucoes").select("obrigatoria, concluida").eq("execucao_id", execucaoId);
+  if (tarefasError || !tarefas) redirect(`${caminho(checklistId)}?erro=${encodeURIComponent("Não foi possível verificar as tarefas. Tente novamente.")}`);
   if ((tarefas ?? []).some((tarefa) => tarefa.obrigatoria && !tarefa.concluida)) redirect(caminho(checklistId));
-  await createClient().from("execucoes").update({ status: "concluido", fim: new Date().toISOString() }).eq("id", execucaoId).eq("usuario_id", contexto.usuario.id);
+  const { data: finalizada, error } = await createClient().from("execucoes").update({ status: "concluido", fim: new Date().toISOString() }).eq("id", execucaoId).eq("usuario_id", contexto.usuario.id).select("id").maybeSingle();
+  if (error || !finalizada) redirect(`${caminho(checklistId)}?erro=${encodeURIComponent("Não foi possível finalizar o checklist. Tente novamente.")}`);
   revalidatePath(caminho(checklistId));
   revalidatePath("/hoje");
-  redirect(caminho(checklistId));
+  redirect("/hoje");
 }

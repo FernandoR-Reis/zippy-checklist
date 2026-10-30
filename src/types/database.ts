@@ -62,6 +62,7 @@ export interface Execucao {
 }
 
 export interface TarefaExecucao {
+  observacao: string | null;
   id: string;
   execucao_id: string;
   tarefa_template_id: string | null;

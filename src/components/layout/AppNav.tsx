@@ -19,7 +19,7 @@ export function AppNav({ perfil }: { perfil: PerfilUsuario }) {
   const links = perfil === "gestor" ? linksGestor : linksOperacional;
 
   return (
-    <nav className="bg-surface border-b border-border px-6 flex gap-1 overflow-x-auto">
+    <nav className="bg-surface border-b border-border px-3 sm:px-6 flex flex-wrap gap-1">
       {links.map((link) => {
         const active = pathname === link.href;
         return (

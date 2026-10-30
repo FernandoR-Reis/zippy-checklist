@@ -64,6 +64,27 @@ mais `success`/`danger` para os status de checklist. Tipografia:
 6. Acesse `http://localhost:3000` → você cai em `/login`. Clique em
    "Criar empresa" para o primeiro cadastro (você entra como gestor).
 
+### Importar checklist de planilha
+
+Em **Unidade → Checklists → Importar planilha**, envie um arquivo `.xlsx`
+ou `.csv` de até 10 MB. O app analisa as abas e sugere as colunas de
+tarefas, setor e unidade; se necessário, ajuste a aba, as colunas e o
+intervalo manualmente. Revise e edite a prévia, escolha o setor, responsável,
+frequência e horário e confirme a importação. A planilha é processada no
+navegador e nenhum checklist ou tarefa é criado antes da confirmação.
+
+### Observações de tarefas não feitas
+
+Aplique a migration `supabase/migrations/0005_tarefa_observacao.sql` no
+SQL Editor do Supabase antes de usar este fluxo. “Não feito” exige um
+motivo e só avança após salvá-lo. A tarefa permanece pendente, e as
+obrigatórias impedem a finalização. O motivo aparece na revisão; concluir
+a tarefa ou resetar o checklist remove essa observação.
+
+No resumo, “Finalizar checklist” conclui a execução sem confirmação
+intermediária e retorna à lista de hoje após salvar. Tarefas obrigatórias
+pendentes continuam bloqueando a finalização.
+
 ### Convite de usuários
 
 A tela **Usuários** convida por e-mail via
