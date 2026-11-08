@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getOrCreateUsuarioAtual } from "@/lib/usuarios/actions";
+import { podeGerenciarUnidade } from "@/lib/unidades/guard";
 import type { ChecklistTemplate, Execucao, Usuario } from "@/types/database";
 
 export async function execucaoComContexto(execucaoId: string): Promise<{
@@ -17,7 +18,18 @@ export async function execucaoComContexto(execucaoId: string): Promise<{
   if (!checklist) return null;
   const { data: unidade } = await supabase.from("unidades").select("empresa_id").eq("id", checklist.unidade_id).maybeSingle();
   if (!unidade || unidade.empresa_id !== usuario.empresa_id) return null;
-  const ehResponsavel = execucao.usuario_id === usuario.id;
-  if (!ehResponsavel && usuario.perfil !== "gestor") return null;
-  return { usuario, execucao: execucao as Execucao, checklist: checklist as ChecklistTemplate, podeEditar: ehResponsavel && execucao.status !== "concluido" };
+  const ehGestor = podeGerenciarUnidade(usuario, checklist.unidade_id);
+  const ehIniciador =
+    execucao.usuario_id === usuario.id &&
+    (usuario.perfil === "administrador" || usuario.unidade_id === checklist.unidade_id);
+  if (!ehIniciador && !ehGestor) return null;
+  return {
+    usuario,
+    execucao: execucao as Execucao,
+    checklist: checklist as ChecklistTemplate,
+    podeEditar:
+      execucao.status !== "concluido" &&
+      execucao.status !== "atrasado" &&
+      (ehIniciador || ehGestor),
+  };
 }

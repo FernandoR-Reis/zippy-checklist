@@ -3,7 +3,13 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { TimePicker } from "@/components/ui/TimePicker";
 import type { ChecklistTemplate, Setor, Usuario } from "@/types/database";
+import {
+  analisarPrazoOperacional,
+  AGENDA_OPERACIONAL_PADRAO,
+  type AgendaOperacional,
+} from "@/lib/execucoes/schedule";
 
 const frequencias = [
   { value: "diaria", label: "Diária" },
@@ -11,10 +17,15 @@ const frequencias = [
   { value: "mensal", label: "Mensal" },
 ] as const;
 
-export function ChecklistForm({ action, setores, usuarios, checklist, erro, submitLabel }: { action: (data: FormData) => void | Promise<void>; setores: Setor[]; usuarios: Usuario[]; checklist?: ChecklistTemplate; erro?: string; submitLabel: string }) {
+export function ChecklistForm({ action, setores, usuarios, checklist, agenda = AGENDA_OPERACIONAL_PADRAO, erro, submitLabel }: { action: (data: FormData) => void | Promise<void>; setores: Setor[]; usuarios: Usuario[]; checklist?: ChecklistTemplate; agenda?: AgendaOperacional; erro?: string; submitLabel: string }) {
   const [tarefasPendentes, setTarefasPendentes] = useState(0);
   const [aviso, setAviso] = useState(false);
+  const [horario, setHorario] = useState(checklist?.horario?.slice(0, 5) ?? "");
+  const [limiteMinutos, setLimiteMinutos] = useState(String(checklist?.limite_minutos ?? 90));
   const select = "font-body text-sm text-ink border border-border rounded-sm px-3 py-2.5 outline-none focus:border-navy";
+  const analisePrazo = horario
+    ? analisarPrazoOperacional(horario, Number(limiteMinutos), agenda)
+    : null;
 
   useEffect(() => {
     const atualizar = (event: Event) => setTarefasPendentes((event as CustomEvent<number>).detail);
@@ -36,12 +47,37 @@ export function ChecklistForm({ action, setores, usuarios, checklist, erro, subm
       <label className="flex flex-col gap-1.5"><span className="font-body font-medium text-xs text-ink-muted uppercase tracking-wide">Descrição (opcional)</span><textarea name="descricao" defaultValue={checklist?.descricao ?? ""} rows={2} className={`${select} resize-none`} /></label>
       <div className="grid grid-cols-2 gap-4">
         <label className="flex flex-col gap-1.5"><span className="font-body font-medium text-xs text-ink-muted uppercase tracking-wide">Setor</span><select name="setor_id" defaultValue={checklist?.setor_id ?? ""} required className={select}><option value="" disabled>Selecione</option>{setores.map((setor) => <option key={setor.id} value={setor.id}>{setor.nome}</option>)}</select></label>
-        <label className="flex flex-col gap-1.5"><span className="font-body font-medium text-xs text-ink-muted uppercase tracking-wide">Responsável</span><select name="responsavel_id" defaultValue={checklist?.responsavel_id ?? ""} required className={select}><option value="" disabled>Selecione</option>{usuarios.map((usuario) => <option key={usuario.id} value={usuario.id}>{usuario.nome}</option>)}</select></label>
+        <label className="flex flex-col gap-1.5"><span className="font-body font-medium text-xs text-ink-muted uppercase tracking-wide">Responsável principal</span><select name="responsavel_id" defaultValue={checklist?.responsavel_id ?? ""} required className={select}><option value="" disabled>Selecione</option>{usuarios.map((usuario) => <option key={usuario.id} value={usuario.id}>{usuario.nome}</option>)}</select><span className="font-body text-xs text-ink-muted">Membros vinculados ao setor também podem executar.</span></label>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <label className="flex flex-col gap-1.5"><span className="font-body font-medium text-xs text-ink-muted uppercase tracking-wide">Frequência</span><select name="recorrencia" defaultValue={checklist?.recorrencia ?? "diaria"} className={select}>{frequencias.map((frequencia) => <option key={frequencia.value} value={frequencia.value}>{frequencia.label}</option>)}</select></label>
-        <Input label="Horário" name="horario" type="time" defaultValue={checklist?.horario?.slice(0, 5) ?? ""} required />
+        <TimePicker label="Horário" name="horario" value={horario} onChange={setHorario} size="compact" required />
       </div>
+      <label className="flex flex-col gap-1.5">
+        <span className="font-body font-medium text-xs text-ink-muted uppercase tracking-wide">Tempo limite (minutos)</span>
+        <input
+          name="limite_minutos"
+          type="number"
+          min={1}
+          max={1440}
+          step={1}
+          value={limiteMinutos}
+          onChange={(event) => setLimiteMinutos(event.target.value)}
+          required
+          className={select}
+        />
+        <span className="font-body text-xs text-ink-muted">O prazo começa no horário configurado. Ex.: 90 minutos = 1h30.</span>
+      </label>
+      {analisePrazo?.foraDaOperacao && (
+        <p role="status" className="rounded-sm bg-orange-soft px-3 py-2 font-body text-xs text-orange-dark">
+          Este horário está fora da operação da empresa ({agenda.inicio_operacao.slice(0, 5)}–{agenda.fim_operacao.slice(0, 5)}). Confira se é intencional.
+        </p>
+      )}
+      {analisePrazo?.terminaDepoisDoFim && (
+        <p role="status" className="rounded-sm bg-orange-soft px-3 py-2 font-body text-xs text-orange-dark">
+          O prazo termina às {analisePrazo.horarioTermino}{analisePrazo.terminoNoDiaSeguinte ? " do dia seguinte" : ""}, após o fim da operação. O prazo integral será mantido.
+        </p>
+      )}
       <Button type="submit" className="self-start">{submitLabel}</Button>
     </form>
     {aviso && <div className="modal-backdrop-enter fixed inset-0 z-50 flex items-center justify-center bg-navy-deep/45 px-6" role="presentation">

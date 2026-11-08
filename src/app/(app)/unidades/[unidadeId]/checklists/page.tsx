@@ -1,14 +1,17 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { unidadeDoUsuario } from "@/lib/unidades/guard";
+import { unidadeDoUsuario, podeGerenciarUnidade } from "@/lib/unidades/guard";
 import {
   listarChecklists,
   alternarStatusChecklist,
 } from "@/lib/checklists/actions";
 import { listarSetores } from "@/lib/setores/actions";
+import { buscarAgendaEmpresa } from "@/lib/empresas/agenda";
+import { horarioNoDiaSeguinte } from "@/lib/execucoes/schedule";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { DeleteChecklistButton } from "@/components/checklists/DeleteChecklistButton";
 import type { Recorrencia } from "@/types/database";
 const nomes: Record<Recorrencia, string> = {
   diaria: "Diária",
@@ -20,13 +23,14 @@ export default async function ChecklistsPage({
   searchParams,
 }: {
   params: { unidadeId: string };
-  searchParams: { setor?: string };
+  searchParams: { setor?: string; erro?: string; excluido?: string };
 }) {
   const contexto = await unidadeDoUsuario(params.unidadeId);
-  if (!contexto) redirect("/unidades");
-  const [checklists, setores] = await Promise.all([
+  if (!contexto?.usuario.empresa_id) redirect("/unidades");
+  const [checklists, setores, agenda] = await Promise.all([
     listarChecklists(params.unidadeId),
     listarSetores(params.unidadeId),
+    buscarAgendaEmpresa(contexto.usuario.empresa_id),
   ]);
   const setoresPorId = new Map(setores.map((s) => [s.id, s.nome]));
   const checklistsPorSetor = new Map<string, typeof checklists>();
@@ -54,7 +58,7 @@ export default async function ChecklistsPage({
   const gruposVisiveis = setorSelecionado
     ? grupos.filter((grupo) => grupo.id === setorSelecionado)
     : grupos;
-  const gestor = contexto.usuario.perfil === "gestor";
+  const gestor = podeGerenciarUnidade(contexto.usuario, params.unidadeId);
   return (
     <div>
       <div className="mb-1 font-mono text-xs text-ink-muted uppercase tracking-wide">
@@ -81,6 +85,16 @@ export default async function ChecklistsPage({
           </div>
         )}
       </div>
+      {searchParams.erro && (
+        <div role="alert" className="mb-6 rounded-sm bg-danger-soft px-3 py-2 font-body text-sm text-danger-text">
+          {searchParams.erro}
+        </div>
+      )}
+      {searchParams.excluido === "1" && (
+        <div role="status" className="mb-6 rounded-sm bg-success-soft px-3 py-2 font-body text-sm text-success-text">
+          Checklist excluído com sucesso.
+        </div>
+      )}
       {grupos.length > 0 && (
         <nav
           aria-label="Filtrar checklists por setor"
@@ -141,7 +155,7 @@ export default async function ChecklistsPage({
                         <div className="font-mono text-[11px] text-ink-muted mt-1">
                           {nomes[checklist.recorrencia]}
                           {checklist.horario
-                            ? ` · ${checklist.horario.slice(0, 5)}`
+                            ? ` · ${checklist.horario.slice(0, 5)}${horarioNoDiaSeguinte(checklist.horario, agenda) ? " (+1 dia)" : ""} · prazo ${checklist.limite_minutos ?? 90} min`
                             : ""}
                         </div>
                       </div>
@@ -150,7 +164,7 @@ export default async function ChecklistsPage({
                       </Badge>
                     </div>
                     {gestor && (
-                      <div className="flex items-center gap-4 mt-3">
+                      <div className="flex flex-wrap items-center gap-4 mt-3">
                         <a
                           href={`/unidades/${params.unidadeId}/checklists/${checklist.id}`}
                           className="font-body font-semibold text-xs text-navy"
@@ -176,6 +190,7 @@ export default async function ChecklistsPage({
                             {checklist.ativo ? "Desativar" : "Ativar"}
                           </button>
                         </form>
+                        <DeleteChecklistButton unidadeId={params.unidadeId} checklistId={checklist.id} nome={checklist.nome} />
                       </div>
                     )}
                   </Card>

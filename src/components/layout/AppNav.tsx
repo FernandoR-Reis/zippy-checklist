@@ -7,6 +7,7 @@ import type { PerfilUsuario } from "@/types/database";
 
 const linksGestor = [
   { href: "/hoje", label: "Hoje" },
+  { href: "/alertas", label: "Alertas" },
   { href: "/unidades", label: "Unidades" },
   { href: "/usuarios", label: "Usuários" },
   { href: "/empresa", label: "Empresa" },
@@ -16,7 +17,7 @@ const linksOperacional = [{ href: "/hoje", label: "Hoje" }];
 
 export function AppNav({ perfil }: { perfil: PerfilUsuario }) {
   const pathname = usePathname();
-  const links = perfil === "gestor" ? linksGestor : linksOperacional;
+  const links = perfil === "operacional" ? linksOperacional : linksGestor;
 
   return (
     <nav className="bg-surface border-b border-border px-3 sm:px-6 flex flex-wrap gap-1">

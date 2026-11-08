@@ -2,13 +2,16 @@
 // setores, usuarios). A partir do Sprint 2, gere este arquivo com:
 //   npx supabase gen types typescript --project-id SEU_PROJETO > src/types/database.ts
 
-export type PerfilUsuario = "gestor" | "operacional";
+export type PerfilUsuario = "administrador" | "gestor" | "operacional";
 export type Recorrencia = "diaria" | "semanal" | "mensal";
 export type TipoTarefa = "checkbox" | "sim_nao" | "numero" | "texto" | "foto";
 
 export interface Empresa {
   id: string;
   nome: string;
+  fuso_horario: string;
+  inicio_operacao: string;
+  fim_operacao: string;
   created_at: string;
 }
 
@@ -36,6 +39,7 @@ export interface ChecklistTemplate {
   descricao: string | null;
   recorrencia: Recorrencia;
   horario: string | null;
+  limite_minutos: number;
   ativo: boolean;
   created_at: string;
 }
@@ -79,6 +83,7 @@ export interface TarefaExecucao {
 export interface Usuario {
   id: string;
   empresa_id: string | null;
+  unidade_id: string | null;
   nome: string;
   email: string;
   perfil: PerfilUsuario;

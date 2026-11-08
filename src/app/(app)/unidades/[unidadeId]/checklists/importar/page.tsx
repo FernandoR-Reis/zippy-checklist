@@ -4,6 +4,7 @@ import { importarChecklistPlanilha } from "@/lib/checklists/import-actions";
 import { listarSetores } from "@/lib/setores/actions";
 import { listarUsuariosDaEmpresa } from "@/lib/usuarios/actions";
 import { unidadeDoUsuario } from "@/lib/unidades/guard";
+import { buscarAgendaEmpresa } from "@/lib/empresas/agenda";
 
 export default async function ImportarChecklistPage({
   params,
@@ -13,14 +14,18 @@ export default async function ImportarChecklistPage({
   searchParams: { erro?: string };
 }) {
   const contexto = await unidadeDoUsuario(params.unidadeId);
-  if (!contexto || contexto.usuario.perfil !== "gestor") {
+  if (!contexto?.usuario.empresa_id) {
     redirect(`/unidades/${params.unidadeId}/checklists`);
   }
 
-  const [setores, usuarios] = await Promise.all([
+  const [setores, usuarios, agenda] = await Promise.all([
     listarSetores(params.unidadeId),
-    listarUsuariosDaEmpresa(contexto.usuario.empresa_id!),
+    listarUsuariosDaEmpresa(contexto.usuario.empresa_id),
+    buscarAgendaEmpresa(contexto.usuario.empresa_id),
   ]);
+  const responsaveis = usuarios.filter(
+    (usuario) => usuario.perfil === "administrador" || usuario.unidade_id === params.unidadeId,
+  );
 
   return (
     <div>
@@ -38,7 +43,7 @@ export default async function ImportarChecklistPage({
           </a>
         </p>
       )}
-      {usuarios.length === 0 && (
+      {responsaveis.length === 0 && (
         <p className="mb-5 rounded-sm bg-danger-soft text-danger-text text-sm font-body px-3 py-2">
           Cadastre um usuário para atribuir como responsável antes de importar.{" "}
           <a href="/usuarios" className="font-semibold underline">
@@ -49,7 +54,8 @@ export default async function ImportarChecklistPage({
       <ImportarChecklistPlanilha
         unidadeNome={contexto.unidade.nome}
         setores={setores.filter((setor) => setor.ativo)}
-        usuarios={usuarios}
+        usuarios={responsaveis}
+        agenda={agenda}
         action={importarChecklistPlanilha.bind(null, params.unidadeId)}
         erroInicial={searchParams.erro}
       />

@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { CheckMark } from "@/components/ui/CheckMark";
 import type { TarefaExecucao } from "@/types/database";
+import { tarefaNaoFeita, tarefaResolvida } from "@/lib/execucoes/tarefas";
 
 export function ExecutionTasks({
   checklistId,
@@ -29,7 +30,7 @@ export function ExecutionTasks({
     ...atualizacoes[tarefa.id],
   }));
   const [indiceAtual, setIndiceAtual] = useState(() => {
-    const indice = tarefas.findIndex((tarefa) => !tarefa.concluida);
+    const indice = tarefas.findIndex((tarefa) => !tarefaResolvida(tarefa));
     return indice === -1 ? tarefas.length : indice;
   });
   const [persistindo, setSalvando] = useState(false);
@@ -58,15 +59,18 @@ export function ExecutionTasks({
   }, [voltando, avancando, tarefas.length]);
 
   const concluidas = tarefas.filter((tarefa) => tarefa.concluida).length;
+  const naoFeitas = tarefas.filter(tarefaNaoFeita);
   const obrigatorias = tarefas.filter((tarefa) => tarefa.obrigatoria);
   const obrigatoriasConcluidas = obrigatorias.filter(
     (tarefa) => tarefa.concluida
   ).length;
+  const obrigatoriasResolvidas = obrigatorias.filter(tarefaResolvida).length;
   const progresso = tarefas.length
     ? Math.round((concluidas / tarefas.length) * 100)
     : 0;
   const tarefaAtual = tarefas[indiceAtual];
-  const podeFinalizar = podeEditar && !persistindo && obrigatoriasConcluidas === obrigatorias.length;
+  const podeFinalizar = podeEditar && !salvando && !voltando && !reiniciando &&
+    obrigatoriasResolvidas === obrigatorias.length;
 
   function voltar() {
     if (salvando || voltando || indiceAtual === 0) return;
@@ -180,6 +184,8 @@ export function ExecutionTasks({
             concluida: false,
             concluida_em: null,
             observacao: String(formData.get("observacao")).trim(),
+            resposta: null,
+            evidencia: null,
           },
         }));
         setObservando(false);
@@ -205,12 +211,30 @@ export function ExecutionTasks({
           Confirmando o salvamento da tarefa anterior...
         </p>
       )}
+      {naoFeitas.length > 0 && (
+        <div role="status" className="mb-4 rounded-md border border-orange/30 bg-[#FFF8F0] px-4 py-3 font-body text-sm text-[#80501F]">
+          <p className="font-semibold">
+            Atenção: {naoFeitas.length === 1
+              ? "existe 1 tarefa que não foi executada."
+              : `existem ${naoFeitas.length} tarefas que não foram executadas.`}
+          </p>
+          <p className="mt-1">Você pode finalizar o checklist com essas tarefas justificadas. As observações ficarão registradas.</p>
+          <ul className="mt-3 space-y-2">
+            {naoFeitas.map((tarefa) => (
+              <li key={tarefa.id}>
+                <span className="font-semibold">{tarefa.titulo}</span>
+                <p className="whitespace-pre-wrap">Motivo: {tarefa.observacao}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 font-mono text-xs text-ink-muted">
         <span>
           {concluidas} de {tarefas.length} tarefas concluídas
         </span>
         <span>
-          Obrigatórias {obrigatoriasConcluidas} de {obrigatorias.length}
+          Obrigatórias: {obrigatoriasConcluidas} feitas, {obrigatoriasResolvidas - obrigatoriasConcluidas} justificadas de {obrigatorias.length}
         </span>
       </div>
       <div
@@ -382,6 +406,9 @@ export function ExecutionTasks({
                   className="rounded-sm border border-border px-3 py-2.5 font-body text-sm font-normal text-ink outline-none focus:border-navy"
                 />
               </label>
+              <p className="font-body text-xs text-ink-muted">
+                Observação obrigatória. A tarefa será registrada como não executada, mesmo após a finalização do checklist.
+              </p>
               {erroObservacao && <p role="alert" className="font-body text-sm text-danger-text">{erroObservacao}</p>}
               <div className="flex flex-wrap justify-center gap-3">
                 <Button type="button" variant="outline" disabled={salvando} onClick={() => { setObservando(false); setErroObservacao(null); }}>
@@ -476,9 +503,11 @@ export function ExecutionTasks({
             Você chegou ao fim das tarefas
           </h2>
           <p className="mt-2 font-body text-sm text-ink-muted">
-            {obrigatoriasConcluidas < obrigatorias.length
-              ? "Existem tarefas obrigatórias não feitas. Revise e conclua essas tarefas antes de finalizar o checklist."
-              : "As tarefas opcionais restantes podem ficar pendentes ao finalizar o checklist."}
+            {obrigatoriasResolvidas < obrigatorias.length
+              ? "Existem tarefas obrigatórias sem resposta. Conclua essas tarefas ou marque como não feitas com uma observação antes de finalizar."
+              : naoFeitas.length > 0
+                ? "As tarefas não executadas foram justificadas. Você pode finalizar o checklist mantendo essas observações."
+                : "As tarefas opcionais restantes podem ficar pendentes ao finalizar o checklist."}
           </p>
           {tarefas.length > 0 && (
             <div className="mt-4">
@@ -493,7 +522,7 @@ export function ExecutionTasks({
             onClick={() => {
               setRevisando(true);
               const primeiraPendente = tarefas.findIndex(
-                (tarefa) => !tarefa.concluida
+                (tarefa) => !tarefaResolvida(tarefa)
               );
               setIndiceAtual(
                 primeiraPendente === -1 ? tarefas.length : primeiraPendente

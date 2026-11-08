@@ -16,7 +16,7 @@ export async function importarChecklistPlanilha(
   formData: FormData,
 ) {
   const contexto = await unidadeDoUsuario(unidadeId);
-  if (!contexto || contexto.usuario.perfil !== "gestor") {
+  if (!contexto) {
     redirect(listaPath(unidadeId));
   }
   if (formData.get("confirmacao") !== "confirmar") {
@@ -28,6 +28,7 @@ export async function importarChecklistPlanilha(
   const responsavelId = String(formData.get("responsavel_id") ?? "").trim();
   const recorrencia = String(formData.get("recorrencia") ?? "") as Recorrencia;
   const horario = String(formData.get("horario") ?? "").trim();
+  const limiteMinutos = Number(formData.get("limite_minutos"));
   const titulos = formData.getAll("titulo").map((valor) => String(valor).trim());
   const tiposEnviados = formData.getAll("tipo").map((valor) => String(valor) as TipoTarefa);
 
@@ -38,6 +39,9 @@ export async function importarChecklistPlanilha(
     !responsavelId ||
     !recorrencias.includes(recorrencia) ||
     !/^([01]\d|2[0-3]):[0-5]\d$/.test(horario) ||
+    !Number.isInteger(limiteMinutos) ||
+    limiteMinutos < 1 ||
+    limiteMinutos > 1440 ||
     titulos.length === 0 ||
     titulos.length > 300 ||
     titulos.some((titulo, indice) => !titulo || titulo.length > 250 || !tipos.includes(tiposEnviados[indice]))
@@ -56,7 +60,7 @@ export async function importarChecklistPlanilha(
       .maybeSingle(),
     supabase
       .from("usuarios")
-      .select("id")
+      .select("id, perfil, unidade_id")
       .eq("id", responsavelId)
       .eq("empresa_id", contexto.usuario.empresa_id!)
       .maybeSingle(),
@@ -64,7 +68,12 @@ export async function importarChecklistPlanilha(
   if (resultadoSetor.error || resultadoResponsavel.error) {
     redirect(`${importarPath(unidadeId)}?erro=${encodeURIComponent("Não foi possível validar setor e responsável. Tente novamente.")}`);
   }
-  if (!resultadoSetor.data || !resultadoResponsavel.data) {
+  if (
+    !resultadoSetor.data ||
+    !resultadoResponsavel.data ||
+    (resultadoResponsavel.data.perfil !== "administrador" &&
+      resultadoResponsavel.data.unidade_id !== unidadeId)
+  ) {
     redirect(`${importarPath(unidadeId)}?erro=${encodeURIComponent("Selecione um setor ativo e um responsável válido.")}`);
   }
 
@@ -78,6 +87,7 @@ export async function importarChecklistPlanilha(
       descricao: null,
       recorrencia,
       horario,
+      limite_minutos: limiteMinutos,
       ativo: true,
     })
     .select("id")

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { TimePicker } from "@/components/ui/TimePicker";
 import {
   analisarCsv,
   nomeColuna,
@@ -13,6 +14,10 @@ import {
   type AbaPlanilha,
 } from "@/lib/checklists/planilha";
 import type { Recorrencia, Setor, TipoTarefa, Usuario } from "@/types/database";
+import {
+  analisarPrazoOperacional,
+  type AgendaOperacional,
+} from "@/lib/execucoes/schedule";
 
 type Mapeamento = {
   aba: number;
@@ -102,12 +107,14 @@ export function ImportarChecklistPlanilha({
   unidadeNome,
   setores,
   usuarios,
+  agenda,
   action,
   erroInicial,
 }: {
   unidadeNome: string;
   setores: Setor[];
   usuarios: Usuario[];
+  agenda: AgendaOperacional;
   action: (formData: FormData) => void | Promise<void>;
   erroInicial?: string;
 }) {
@@ -119,6 +126,8 @@ export function ImportarChecklistPlanilha({
   const [setorId, setSetorId] = useState("");
   const [erro, setErro] = useState(erroInicial ?? "");
   const [analisando, setAnalisando] = useState(false);
+  const [horario, setHorario] = useState("");
+  const [limiteMinutos, setLimiteMinutos] = useState("90");
 
   const abaAtual = mapeamento ? abas[mapeamento.aba] : undefined;
   const quantidadeColunas = useMemo(
@@ -134,6 +143,9 @@ export function ImportarChecklistPlanilha({
         .filter(Boolean),
     )].slice(0, 5);
   }, [abaAtual, mapeamento]);
+  const analisePrazo = horario
+    ? analisarPrazoOperacional(horario, Number(limiteMinutos), agenda)
+    : null;
 
   async function analisarArquivo() {
     if (!arquivo) {
@@ -383,7 +395,7 @@ export function ImportarChecklistPlanilha({
               )}
               <div className="grid sm:grid-cols-3 gap-3">
                 <label className="flex flex-col gap-1.5">
-                  <span className="font-body font-medium text-xs text-ink-muted uppercase tracking-wide">Responsável</span>
+                  <span className="font-body font-medium text-xs text-ink-muted uppercase tracking-wide">Responsável principal</span>
                   <select name="responsavel_id" defaultValue="" required className={estiloSelect}>
                     <option value="" disabled>Selecione</option>
                     {usuarios.map((usuario) => <option key={usuario.id} value={usuario.id}>{usuario.nome}</option>)}
@@ -396,8 +408,32 @@ export function ImportarChecklistPlanilha({
                     {recorrencias.map((frequencia) => <option key={frequencia.valor} value={frequencia.valor}>{frequencia.nome}</option>)}
                   </select>
                 </label>
-                <Input label="Horário" name="horario" type="time" required />
+                <TimePicker label="Horário" name="horario" value={horario} onChange={setHorario} size="compact" required />
               </div>
+              <Input
+                label="Tempo limite (minutos)"
+                name="limite_minutos"
+                type="number"
+                min={1}
+                max={1440}
+                step={1}
+                value={limiteMinutos}
+                onChange={(evento) => setLimiteMinutos(evento.target.value)}
+                required
+              />
+              <p className="-mt-2 font-body text-xs text-ink-muted">
+                O prazo começa no horário configurado. Ex.: 90 minutos = 1h30.
+              </p>
+              {analisePrazo?.foraDaOperacao && (
+                <p role="status" className="rounded-sm bg-orange-soft px-3 py-2 font-body text-xs text-orange-dark">
+                  Este horário está fora da operação da empresa ({agenda.inicio_operacao.slice(0, 5)}–{agenda.fim_operacao.slice(0, 5)}). Confira se é intencional.
+                </p>
+              )}
+              {analisePrazo?.terminaDepoisDoFim && (
+                <p role="status" className="rounded-sm bg-orange-soft px-3 py-2 font-body text-xs text-orange-dark">
+                  O prazo termina às {analisePrazo.horarioTermino}{analisePrazo.terminoNoDiaSeguinte ? " do dia seguinte" : ""}, após o fim da operação. O prazo integral será mantido.
+                </p>
+              )}
             </div>
 
               {tarefas.map((tarefa, indice) => (

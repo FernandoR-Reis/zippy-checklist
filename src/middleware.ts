@@ -36,8 +36,10 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isDefinirSenha = path.startsWith("/definir-senha");
+  const isCronRoute = path === "/api/cron/checklist-alertas";
+  const isServiceWorker = path === "/sw.js";
   const isAuthRoute = path.startsWith("/login") || path.startsWith("/cadastro") || path.startsWith("/callback") || isDefinirSenha;
-  const isPublic = isAuthRoute || path === "/";
+  const isPublic = isAuthRoute || isCronRoute || isServiceWorker || path === "/" || path === "/manifest.webmanifest";
 
   if (!user && !isPublic) {
     return NextResponse.redirect(new URL("/login", request.url));

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { unidadeDoUsuario } from "@/lib/unidades/guard";
+import { unidadeDoUsuario, podeGerenciarUnidade } from "@/lib/unidades/guard";
 import {
   buscarChecklist,
   atualizarChecklist,
@@ -12,6 +12,7 @@ import {
 } from "@/lib/tarefas/actions";
 import { listarSetores } from "@/lib/setores/actions";
 import { listarUsuariosDaEmpresa } from "@/lib/usuarios/actions";
+import { buscarAgendaEmpresa } from "@/lib/empresas/agenda";
 import { ChecklistForm } from "@/components/checklists/ChecklistForm";
 import { TaskRow } from "@/components/checklists/TaskRow";
 import { Card } from "@/components/ui/Card";
@@ -19,6 +20,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { BulkTaskForm } from "@/components/checklists/BulkTaskForm";
+import { DeleteChecklistButton } from "@/components/checklists/DeleteChecklistButton";
 function Tipo({ tarefa }: { tarefa: { tipo: string; obrigatoria: boolean } }) {
   return (
     <div className="flex items-end gap-4">
@@ -58,6 +60,8 @@ export default async function ChecklistPage({
     sucesso?: string;
     importadas?: string;
     erroImportacao?: string;
+    erroDuplicacao?: string;
+    duplicado?: string;
     novaTarefa?: string;
     editarTarefa?: string;
   };
@@ -67,10 +71,11 @@ export default async function ChecklistPage({
   const resultado = await buscarChecklist(params.unidadeId, params.checklistId);
   if (!resultado) redirect(`/unidades/${params.unidadeId}/checklists`);
   const { checklist, tarefas } = resultado;
-  const gestor = contexto.usuario.perfil === "gestor";
-  const [setores, usuarios] = await Promise.all([
+  const gestor = podeGerenciarUnidade(contexto.usuario, params.unidadeId);
+  const [setores, usuarios, agenda] = await Promise.all([
     listarSetores(params.unidadeId),
     listarUsuariosDaEmpresa(contexto.usuario.empresa_id!),
+    buscarAgendaEmpresa(contexto.usuario.empresa_id!),
   ]);
   const setorDisponivel = setores.filter(
     (s) => s.ativo || s.id === checklist.setor_id,
@@ -93,6 +98,16 @@ export default async function ChecklistPage({
       {searchParams.erroImportacao && (
         <div role="alert" className="mb-6 rounded-sm bg-danger-soft text-danger-text text-sm font-body px-3 py-2">
           {searchParams.erroImportacao}
+        </div>
+      )}
+      {searchParams.erroDuplicacao && (
+        <div role="alert" className="mb-6 rounded-sm bg-danger-soft text-danger-text text-sm font-body px-3 py-2">
+          {searchParams.erroDuplicacao}
+        </div>
+      )}
+      {searchParams.duplicado === "1" && (
+        <div role="status" className="mb-6 rounded-sm bg-success-soft text-success-text text-sm font-body px-3 py-2">
+          Checklist duplicado com sucesso.
         </div>
       )}
       {searchParams.sucesso && (
@@ -119,6 +134,7 @@ export default async function ChecklistPage({
             setores={setorDisponivel}
             usuarios={usuarios}
             checklist={checklist}
+            agenda={agenda}
             erro={
               !searchParams.novaTarefa && !editando
                 ? searchParams.erro
@@ -127,7 +143,7 @@ export default async function ChecklistPage({
             submitLabel="Salvar alterações"
           />
           {gestor && (
-            <div className="flex items-center gap-4 mt-5">
+            <div className="flex flex-wrap items-center gap-4 mt-5">
               <form
                 action={alternarStatusChecklist.bind(
                   null,
@@ -147,10 +163,11 @@ export default async function ChecklistPage({
                   params.checklistId,
                 )}
               >
-                <Button variant="ghost" type="submit">
+                <Button variant="ghost" type="submit" loadingText="Duplicando...">
                   Duplicar checklist
                 </Button>
               </form>
+              <DeleteChecklistButton unidadeId={params.unidadeId} checklistId={params.checklistId} nome={checklist.nome} />
             </div>
           )}
         </section>
