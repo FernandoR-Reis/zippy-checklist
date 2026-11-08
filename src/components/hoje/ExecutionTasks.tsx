@@ -289,11 +289,9 @@ export function ExecutionTasks({
           )}
 
           {tarefaAtual.tipo === "foto" ? (
-            <>
-              <p className="rounded-sm bg-danger-soft px-3 py-2 font-body text-sm text-danger-text">
-                Tarefas com foto ainda não podem ser respondidas neste aplicativo.
-              </p>
-            </>
+            <p className="rounded-sm bg-danger-soft px-3 py-2 font-body text-sm text-danger-text">
+              Tarefas com foto ainda não podem ser respondidas neste aplicativo.
+            </p>
           ) : (
             <form id={`tarefa-${tarefaAtual.id}`} key={tarefaAtual.id} onSubmit={salvarTarefa} className="flex flex-col gap-5">
               {tarefaAtual.tipo === "sim_nao" && (

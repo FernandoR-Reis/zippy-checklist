@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { unidadeDoUsuario } from "@/lib/unidades/guard";
 import { Card } from "@/components/ui/Card";
 export default async function UnidadePage({ params }: { params: { unidadeId: string } }) {

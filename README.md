@@ -88,6 +88,7 @@ Antes de publicar, execute:
 ```powershell
 node --test tests\*.test.cjs
 npx tsc --noEmit
+npx tsc --noEmit --noUnusedLocals --noUnusedParameters
 npm run build
 ```
 
@@ -241,7 +242,16 @@ alterado. A execução de uma nova data operacional começa separada da anterior
 
 Administradores e gestores têm a área **Alertas**, com checklists agendados,
 em andamento, não executados, atrasados e as tarefas ainda pendentes. Para
-receber notificações mesmo com o app fechado:
+acompanhar a operação, use a busca por checklist/responsável e os filtros
+de unidade, setor e status. Os cartões de resumo também filtram a lista;
+“Precisam de atenção” reúne itens ainda não iniciados, não executados e com
+prazo vencido. Os contadores respeitam a busca e os filtros de unidade/setor.
+As tarefas não concluídas podem ser expandidas em cada cartão. A aba
+**Histórico · 30 dias** mantém os filtros disponíveis para alertas registrados
+de operações anteriores; trocar de aba limpa os filtros. Os filtros de tela
+não alteram permissões nem os critérios de envio de notificações.
+
+Para receber notificações mesmo com o app fechado:
 
 1. Gere um par de chaves Web Push com `npx web-push generate-vapid-keys`.
 2. Configure no ambiente do app (local e Vercel): `SUPABASE_SERVICE_ROLE_KEY`,

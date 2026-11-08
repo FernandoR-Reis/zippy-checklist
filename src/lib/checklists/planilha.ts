@@ -1,4 +1,4 @@
-export type LinhaPlanilha = string[];
+type LinhaPlanilha = string[];
 
 export type AbaPlanilha = {
   nome: string;
@@ -118,7 +118,7 @@ export function analisarCsv(texto: string): AbaPlanilha[] {
   return abas;
 }
 
-export function normalizarTexto(valor: string): string {
+function normalizarTexto(valor: string): string {
   return valor
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")

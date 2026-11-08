@@ -21,6 +21,7 @@ export interface ItemAlertaChecklist {
   nome: string;
   unidadeId: string;
   unidadeNome: string;
+  setorId: string;
   setorNome: string;
   horario: string;
   horarioNoDiaSeguinte: boolean;
@@ -39,7 +40,9 @@ export interface AlertaHistorico {
   data: string;
   tipo: "nao_executado" | "atrasado";
   checklistNome: string;
+  unidadeId: string;
   unidadeNome: string;
+  setorId: string;
   setorNome: string;
 }
 
@@ -103,7 +106,9 @@ export async function listarHistoricoAlertasGestor(): Promise<AlertaHistorico[]>
       data: alerta.data,
       tipo: alerta.tipo as AlertaHistorico["tipo"],
       checklistNome: checklist.nome,
+      unidadeId: checklist.unidade_id,
       unidadeNome: unidadePorId.get(checklist.unidade_id) ?? "",
+      setorId: checklist.setor_id,
       setorNome: setorPorId.get(checklist.setor_id) ?? "",
     }];
   });
@@ -236,6 +241,7 @@ export async function listarAlertasGestor(): Promise<ItemAlertaChecklist[]> {
       nome: checklist.nome,
       unidadeId: checklist.unidade_id,
       unidadeNome: unidadePorId.get(checklist.unidade_id) ?? "",
+      setorId: checklist.setor_id,
       setorNome: setorPorId.get(checklist.setor_id) ?? "",
       horario: checklist.horario.slice(0, 5),
       horarioNoDiaSeguinte: horarioNoDiaSeguinte(checklist.horario, agenda),

@@ -1,7 +1,3 @@
-// Tipos mínimos hand-written, cobrindo o Sprint 1 (empresas, unidades,
-// setores, usuarios). A partir do Sprint 2, gere este arquivo com:
-//   npx supabase gen types typescript --project-id SEU_PROJETO > src/types/database.ts
-
 export type PerfilUsuario = "administrador" | "gestor" | "operacional";
 export type Recorrencia = "diaria" | "semanal" | "mensal";
 export type TipoTarefa = "checkbox" | "sim_nao" | "numero" | "texto" | "foto";

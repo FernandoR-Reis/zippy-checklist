@@ -19,7 +19,7 @@ function caminho(checklistId: string) {
   return `/hoje/${checklistId}`;
 }
 
-export interface ChecklistDoDia {
+interface ChecklistDoDia {
   checklist: ChecklistTemplate;
   setorNome: string;
   totalTarefas: number;
@@ -160,7 +160,7 @@ export async function iniciarOuContinuarExecucao(checklistId: string, _formData:
   redirect(caminho(checklistId));
 }
 
-export interface ExecucaoDoDia {
+interface ExecucaoDoDia {
   usuario: Usuario;
   checklist: ChecklistTemplate;
   unidadeNome: string;
