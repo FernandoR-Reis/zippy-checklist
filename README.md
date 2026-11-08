@@ -3,9 +3,11 @@
 App web mobile-first de checklists operacionais para o Grupo Zippy.
 Produto independente — não faz parte do REIS FLOW.
 
-Este pacote entrega o **Sprint 0** (arquitetura + Design System) e o
-**Sprint 1** (autenticação + Empresa + Unidade + Usuários) do
-briefing, como código real e funcional.
+Inclui autenticação, gestão de empresas, unidades, setores e usuários,
+criação e importação de checklists, execução por tarefa, agenda operacional
+e acompanhamento de prazos e alertas.
+
+**Produção:** [zippy-checklist.vercel.app](https://zippy-checklist.vercel.app).
 
 ## Stack
 
@@ -17,18 +19,24 @@ Next.js 14 (App Router) · React · TypeScript · Tailwind CSS · Supabase
 ```
 src/
   app/
-    (auth)/          login, cadastro, callback de confirmação de e-mail
-    (app)/            área logada: hoje, unidades, usuarios, empresa
+    (auth)/           login, cadastro, callback e definição de senha
+    (app)/            hoje, alertas, unidades, usuarios, empresa
+    api/              assinaturas push e rotina de alertas
   components/
-    ui/               Button, Input, Card, Badge, EmptyState
-    layout/           AppHeader, AppNav
+    ui/               controles compartilhados, incluindo TimePicker
+    layout/           cabeçalho, navegação e feedback
+    checklists/ hoje/ usuarios/ alertas/   formulários e fluxos de tela
   lib/
-    supabase/         clients (browser / server / admin)
+    supabase/         clients de navegador e servidor
     auth/             server actions de login, cadastro, logout
-    empresas/ unidades/ usuarios/   server actions de dados
-  types/database.ts   tipos das tabelas (Sprint 1)
+    execucoes/        execução, agenda, prazos e alertas
+    push/             envio de notificações Web Push
+    checklists/ empresas/ unidades/ setores/ tarefas/ usuarios/
+  types/database.ts   tipos das tabelas e perfis de acesso
 supabase/
-  migrations/0001_init.sql   schema + RLS
+  migrations/         schema, RLS e evolução da agenda (0001 a 0012)
+  templates/          e-mails de cadastro e convite
+tests/                testes de regras e fluxos de checklist
 ```
 
 Separação: UI (`components/`), regra de negócio e acesso a dados
@@ -64,6 +72,47 @@ mais `success`/`danger` para os status de checklist. Tipografia:
 
 6. Acesse `http://localhost:3000` → você cai em `/login`. Clique em
    "Criar empresa" para o primeiro cadastro (você entra como administrador).
+   Se a porta estiver ocupada, use a URL indicada pelo Next.js no terminal.
+
+## Checklists de hoje
+
+A tela **Hoje** mostra a saudação, o horário e fuso da operação, os setores,
+horários e estados dos checklists. Execuções acessíveis exibem o progresso
+das tarefas efetivamente concluídas. Tarefas justificadas como “Não feitas”
+não são contadas como concluídas e aparecem em um aviso próprio.
+
+## Validação e publicação
+
+Antes de publicar, execute:
+
+```powershell
+node --test tests\*.test.cjs
+npx tsc --noEmit
+npm run build
+```
+
+Os testes cobrem agenda operacional, duplicação/exclusão e finalização com
+tarefas não executadas justificadas. O comando `npm run lint` requer
+configuração inicial do ESLint; não há configuração versionada atualmente.
+
+Para publicar o projeto vinculado na Vercel, após revisar e commitar as
+alterações:
+
+```powershell
+vercel --prod
+```
+
+O CLI envia a pasta de trabalho local, não apenas os arquivos do último
+commit. A configuração em [.vercelignore](.vercelignore) exclui as variáveis
+locais de ambiente, dependências e arquivos de build. Configure as variáveis
+de produção na Vercel e confira o status do deploy, o login e os logs após
+a publicação.
+
+Migrations, templates de e-mail e a rotina do Supabase Cron **não são
+aplicados pelo deploy da Vercel**; configure-os separadamente conforme as
+instruções abaixo.
+
+## Funcionalidades e configuração
 
 ### Importar checklist de planilha
 
@@ -179,7 +228,9 @@ comportamento anterior. O seletor visual separa horas (00–23) e minutos
 selecionar o minuto confirma o horário e fecha o seletor, enquanto a validação
 ao salvar permanece no servidor.
 O mesmo seletor é usado ao criar, editar e importar checklists, com horário
-obrigatório e atualização imediata dos avisos de prazo.
+obrigatório e atualização imediata dos avisos de prazo. Nos formulários de
+checklist, o controle usa o tamanho compacto, alinhado aos demais campos;
+em **Empresa**, mantém o tamanho ampliado.
 Em operações que atravessam a meia-noite, os
 checklists após a virada continuam vinculados ao dia em que a operação
 começou. Cada checklist conserva seu próprio horário e prazo. Se o prazo
